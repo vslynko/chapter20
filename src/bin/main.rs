@@ -13,19 +13,27 @@ fn main() {
     let term = Arc::new(Mutex::new(false));
 
     for stream in listener.incoming() {
+        if *term.lock().unwrap() {
+            break;
+        }
+
         let stream = stream.unwrap();
         let term1 = Arc::clone(&term);
         pool.execute(move || {
             if handle_connection(stream) {
-                let mut termination = term1.lock().unwrap();
-                *termination = true;
+                *term1.lock().unwrap() = true;
+                send_terminate(); // otherwise will lock at incoming
             }
         });
-
-        if *term.lock().unwrap() {
-            break;
-        }
     }
+}
+
+fn send_terminate() {
+    thread::spawn(|| {
+        let mut request = TcpStream::connect("127.0.0.1:7878").expect("terminate request failed");
+        let content = b"GET /terminate HTTP/1.1\r\n";
+        request.write(&content[..]).expect("cannot write to stream");
+    });
 }
 
 fn handle_connection(mut stream: TcpStream) -> bool {
