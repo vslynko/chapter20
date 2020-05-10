@@ -28,6 +28,7 @@ fn main() {
     }
 }
 
+/// Send terminate request to self.
 fn send_terminate() {
     thread::spawn(|| {
         let mut request = TcpStream::connect("127.0.0.1:7878").expect("terminate request failed");
